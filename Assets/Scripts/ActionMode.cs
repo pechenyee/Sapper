@@ -1,0 +1,1 @@
+public enum ActionMode { Flag, Shovel };
