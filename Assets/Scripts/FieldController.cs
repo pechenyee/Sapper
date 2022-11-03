@@ -7,22 +7,24 @@ public class FieldController : MonoBehaviour
 {
     [Header("Some Header")] [Tooltip("Это грид")]
     public GridLayoutGroup gridLayoutGroup;
-
     public ModeController modeController;
     public GridButton buttonPref;
     public int size;
     [Space] public TextMeshProUGUI textBomb;
     public TextMeshProUGUI textFlag;
-    public List<GridButton> button;
+    public TextMeshProUGUI congr;
+    public List<GridButton> buttons;
     private bool[,] _bombs;
     private bool[,] _opened;
     private bool[,] _flagged;
     public int quantityBombs;
     public int quantityFlag;
+    public bool active;
 
 
     public void Build() //создание поля
     {
+        active = true;
         //заполнение поля кнопками
         gridLayoutGroup.cellSize = Vector2.one * 230 / size;
         for (int i = 0; i < size; i++)
@@ -31,7 +33,7 @@ public class FieldController : MonoBehaviour
             {
                 GridButton createButton = Instantiate(buttonPref, transform);
                 createButton.Construct(i, j, this);
-                button.Add(createButton);
+                buttons.Add(createButton);
             }
         }
 
@@ -41,16 +43,17 @@ public class FieldController : MonoBehaviour
         textFlag.text = quantityFlag.ToString();
         //растановка бомб в зависимости от размера
         _bombs = new bool[size, size];
-        quantityBombs = Mathf.RoundToInt(size * 0.75f);
+        quantityBombs = Mathf.RoundToInt(size * 1.2f);
+        int qBombs = quantityBombs;
         textBomb.text = quantityBombs.ToString(); //вывод кол-ва бомб на меню над полем
-        while (quantityBombs > 0)
+        while (qBombs > 0)
         {
             int x = Random.Range(0, size);
             int y = Random.Range(0, size);
             if (!_bombs[x, y])
             {
                 _bombs[x, y] = true;
-                quantityBombs--;
+                qBombs--;
             }
         }
 
@@ -58,47 +61,61 @@ public class FieldController : MonoBehaviour
 
     public void OnClick(int x, int y, GridButton button) //проверка поля при нажатии
     {
-        Debug.unityLogger.Log("FieldController", $"OnClick in fieldController {x}, {y}");
-        if (modeController.currentActionMode == ActionMode.Shovel)
+        if (active)
         {
-            if (_flagged[x, y])
-                return;
+            Debug.unityLogger.Log("FieldController", $"OnClick in fieldController {x}, {y}");
+            if (modeController.currentActionMode == ActionMode.Shovel)
+            {
+                if (_flagged[x, y])
+                    return;
             
-            if (_opened[x,y])
-            {
-                CheckButton(x,y,button);
-            } else
-            {
-                SimpleClick(x, y, button);
+                if (_opened[x,y])
+                {
+                    CheckButton(x,y,button);
+                } else
+                {
+                    SimpleClick(x, y, button);
+                }
             }
+            else
+            {
+                if (_opened[x, y])
+                {
+                    CheckButton(x,y,button);
+                }
+                else if (_flagged[x,y])
+                {
+                    button.SetMode(ButtonMode.Empty);
+                    _flagged[x, y] = false;
+                    quantityFlag--;
+                    textFlag.text = quantityFlag.ToString();
+                } else
+                {
+                    button.SetMode(ButtonMode.Flag);
+                    _flagged[x, y] = true;
+                    quantityFlag++;
+                    textFlag.text = quantityFlag.ToString();
+                }
+            }
+            Finish();
         }
-        else
-        {
-            if (_opened[x, y])
-            {
-                return;
-            }
-            else if (_flagged[x,y])
-            {
-                button.SetMode(ButtonMode.Empty);
-                _flagged[x, y] = false;
-                quantityFlag--;
-                textFlag.text = quantityFlag.ToString();
-            } else
-            {
-                button.SetMode(ButtonMode.Flag);
-                _flagged[x, y] = true;
-                quantityFlag++;
-                textFlag.text = quantityFlag.ToString();
-            }
-        }
+        
     }
 
     public void SimpleClick(int x, int y, GridButton button)
     {
         if (_bombs[x, y])
         {
-            button.SetMode(ButtonMode.Mine);
+            for (int i = 0; i < size; i++)
+            for (int j = 0; j < size; j++)
+            {
+                if (_bombs[i,j] && !_flagged[i,j])
+                {
+                    buttons[size * i + j].SetMode(ButtonMode.Mine);
+                }
+            }
+
+            active = false;
         }
         else //если поле не бомба (подсчёт бомб вокруг)
         {
@@ -151,13 +168,13 @@ public class FieldController : MonoBehaviour
                         int qBombs = SearchBomb(i, j);
                         if (qBombs == 0)
                         {
-                            button[size * i + j].SetMode(ButtonMode.Number, qBombs);
+                            buttons[size * i + j].SetMode(ButtonMode.Number, qBombs);
                             _opened[i, j] = true;
                             ZeroButton(i,j);
                         }
                         else
                         {
-                            button[size * i + j].SetMode(ButtonMode.Number, qBombs);
+                            buttons[size * i + j].SetMode(ButtonMode.Number, qBombs);
                             _opened[i, j] = true;
                         } 
                     }
@@ -207,14 +224,38 @@ public class FieldController : MonoBehaviour
             {
                 if (!_opened[i,j] && !_flagged[i,j])
                 {
-                    SimpleClick(i, j, this.button[size * i + j]);
+                    SimpleClick(i, j, this.buttons[size * i + j]);
                 }
             }
         }
-        
-        
     }
 
+    public void Finish()
+    {
+        int qOpen = 0;
+        for (int i = 0; i < size; i++)
+        for (int j = 0; j < size; j++)
+            if (_opened[i,j])
+            {
+                qOpen++;
+            }
+
+        bool qb = quantityBombs + qOpen == size * size;
+        bool bf = true;
+        for (int i = 0; i < size; i++)
+        for (int j = 0; j < size; j++)
+        {
+            if (_bombs[i,j] == !_flagged[i,j] || !_bombs[i,j] == _flagged[i,j])
+            {
+                bf = false;
+            }
+        }
+        Debug.unityLogger.Log($"{qb}, {bf}");
+        if (qb && bf)
+        {
+            congr.enabled = true;
+        }
+    }
     public void Start()
     {
         Build();
