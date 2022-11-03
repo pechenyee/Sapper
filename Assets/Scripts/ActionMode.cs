@@ -1,1 +1,1 @@
-public enum ActionMode { Flag, Shovel };
+public enum ActionMode { Flag, Shovel }; //режимы для управления

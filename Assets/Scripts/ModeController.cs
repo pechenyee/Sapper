@@ -10,7 +10,7 @@ public class ModeController : MonoBehaviour
     private ActionMode _currentActionMode = ActionMode.Shovel;
     public ActionMode currentActionMode => _currentActionMode;
     
-    public void OnClick()
+    public void OnClick() //смена режима после нажания на панель + смена картинки
     {
         if (_currentActionMode == ActionMode.Shovel)
         {

@@ -1,0 +1,1 @@
+public enum ButtonMode { Mine, Flag, Number, Empty}; //возможные режимы для кнопки
